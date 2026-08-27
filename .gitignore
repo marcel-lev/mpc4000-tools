@@ -1,0 +1,11 @@
+.DS_Store
+__pycache__/
+*.pyc
+# converted-program output and test artifacts
+exs2akp/out/
+# compiled app binaries / icon build leftovers
+mpc4k-gui
+mpc4k-editor
+exs2akp-gui
+AppIcon.iconset/
+icon-1024.png
