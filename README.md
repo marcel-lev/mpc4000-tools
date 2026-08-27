@@ -8,8 +8,7 @@ no kernel extensions, no Rosetta.
 
 | App | Source | What it does |
 |-----|--------|--------------|
-| **MPC 4000 File Manager** | `mpc4k/app/` | Browse/manage the MPC's internal drive + USB drive over USB: upload (drag & drop), download, rename, delete, folder tree, audio preview, RAM view with save-to-disk |
-| **MPC 4000 Program Editor** | `mpc4k/editor/` | Live ak.sys-style editing of keygroup programs in the MPC's RAM: filter/envelopes/tune/zones, native EDIT ALL, waveform view with draggable trim & loop markers, remote audition |
+| **MPC 4000 File Manager** | `mpc4k/app/` | Browse/manage the MPC's internal drive + USB drive over USB: upload (drag & drop), download, folder backup, rename, delete, folder tree, audio preview, RAM view with save-to-disk |
 | **MPC EXS to MPC** | `exs2akp/` | Convert Logic EXS24 sampler instruments to Akai `.akp` programs + 24-bit/44.1 kHz WAVs, ready for the MPC 4000 |
 
 Shared backend: `mpc4k/mpc4k.py` (protocol + CLI + daemon) and
@@ -25,7 +24,6 @@ into `/Applications`:
 
 ```bash
 mpc4k/app/build.sh       # MPC 4000 File Manager.app
-mpc4k/editor/build.sh    # MPC 4000 Program Editor.app
 exs2akp/app/build.sh     # MPC EXS to MPC.app
 ```
 
@@ -34,7 +32,7 @@ Requirements: macOS 13+, Xcode command line tools, Homebrew libusb
 
 ## Docs
 
-- `mpc4k/README.md` — file manager, program editor, CLI, and the
+- `mpc4k/README.md` — file manager, CLI, and the
   ak.sys USB protocol notes (including MPC4000 firmware gotchas:
   command pacing, the ~50s internal-drive mount, volatile RAM)
 - `exs2akp/README.md` — converter usage and EXS24→AKP mapping details

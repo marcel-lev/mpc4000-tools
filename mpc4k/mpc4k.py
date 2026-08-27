@@ -331,6 +331,42 @@ class Mpc4000:
         """Delete file or folder (recursive) in the current folder."""
         self.sysex_slow(0x29, name.encode("ascii") + b"\x00")
 
+    def download_folder(self, remote_path, local_root, progress=None,
+                        item_cb=None, max_depth=10):
+        """Recursively download a remote folder into local_root (which is
+        created). Enumerates first so item_cb can report i-of-n, then
+        transfers file by file. All listing commands are paced."""
+        plan = []  # (relative_dir, [(name, size), ...])
+
+        def walk(rel, depth):
+            if depth > max_depth:
+                return
+            full = remote_path + ("\\" + rel if rel else "")
+            self.open_folder(full)
+            folders = self.get_folder_names()
+            files = self.get_filenames()
+            plan.append((rel, files))
+            for f in folders:
+                walk(rel + "\\" + f if rel else f, depth + 1)
+
+        walk("", 0)
+        total = sum(len(files) for _, files in plan)
+        done = 0
+        for rel, files in plan:
+            ldir = os.path.join(local_root, *rel.split("\\")) if rel \
+                else local_root
+            os.makedirs(ldir, exist_ok=True)
+            if files:
+                self.open_folder(remote_path + ("\\" + rel if rel else ""))
+            for name, _size in files:
+                done += 1
+                if item_cb:
+                    item_cb(name, done, total)
+                self.get_file(name, os.path.join(ldir, name), progress)
+                time.sleep(0.5)  # cooldown: sustained transfer bursts can
+                                 # hang the sampler firmware
+        return total
+
     def load_file(self, name, with_deps=True):
         """Load a file from the current disk folder into RAM. with_deps loads
         a program's samples along with it (like LOAD on the front panel)."""
@@ -368,6 +404,7 @@ class Mpc4000:
 
     def get_memory_item(self, cmd, handle, local_path, progress=None):
         """Download a RAM item (sample/program/multi/song) to local_path."""
+        self._pace(0.25)
         self.dev.write(bytes([cmd]) + struct.pack(">I", handle))
         return self._recv_file(local_path, "memory item", progress)
 
@@ -598,6 +635,7 @@ class Mpc4000:
         return self._put_stream(cmd, local_path, size, remote_name, progress)
 
     def _put_stream(self, cmd, local_path, size, remote_name, progress=None):
+        self._pace(0.25)
         self.dev.write(cmd)
         with open(local_path, "rb") as f:
             deadline = time.time() + 3600
@@ -630,6 +668,7 @@ class Mpc4000:
                         progress(min(done + len(block), size), size)
 
     def get_file(self, remote_name, local_path, progress=None):
+        self._pace(0.25)
         self.dev.write(b"\x41" + remote_name.encode("ascii") + b"\x00")
         return self._recv_file(local_path, remote_name, progress)
 
@@ -862,6 +901,17 @@ class Engine:
             elif op == "mem_put":
                 size = m.put_memory_file(req["local"], req["name"], progress)
                 emit({"ok": True, "result": {"size": size}})
+            elif op == "get_folder":
+                base = req.get("dir", "")
+                remote = (base + "\\" + req["name"]) if base else req["name"]
+
+                def item_cb(name, i, n):
+                    emit({"event": "item", "name": name,
+                          "index": i, "count": n})
+
+                count = m.download_folder(remote, req["local"], progress,
+                                          item_cb)
+                emit({"ok": True, "result": {"files": count}})
             elif op == "load_file":
                 m.open_folder(req.get("dir", ""))
                 m.load_file(req["name"], bool(req.get("deps", True)))

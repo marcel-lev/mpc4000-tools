@@ -33,34 +33,6 @@ reverse-engineered by the Aksy project). Works with the Z4/Z8 too.
 The app bundles the Python backend and libusb, so it has no external
 dependencies. Rebuild after changes: `~/mpc4000-tools/mpc4k/app/build.sh`.
 
-## Program Editor app
-
-**`MPC 4000 Program Editor.app`** (installed in `/Applications`) — live
-ak.sys-style editing of the keygroup programs in the MPC's RAM:
-
-- Sidebar lists RAM programs; selecting one loads its keygroups.
-- Keygroup strip + panels: filter (all 33 types, cutoff, resonance), amp
-  envelope ADSR, filter envelope (4-stage rates/levels), tune, note range,
-  mute group, LFO1, zones with velocity ranges. Every slider/pick is sent
-  to the sampler immediately — edits are live in RAM.
-- **Edit All Keygroups** toggle uses the sampler's native EDIT ALL mode
-  (keygroup edit-mode SINGLE/ALL), like the MPC front panel.
-- **Waveform editor**: the sample of the selected keygroup is pulled from
-  RAM and rendered; drag the green S/E markers (trim start/end) and orange
-  L1/L2 markers (loop start/end) — each drag updates the sampler live.
-  Play/Play-Looped audition the sample remotely on the MPC.
-- **Save to Disk** writes the edited program + samples to the current
-  disk folder (same as SAVE on the unit).
-- Runs alongside the File Manager: the backend releases the USB claim
-  after ~3s idle so both apps share the sampler. If both act at the same
-  moment one briefly retries.
-
-Editing protocol notes: program/keygroup/zone edits use the "current item"
-addressing (select program 14 04, keygroup 10 01; zone index in each zone
-command); typed replies; EDIT ALL = keygroup edit-mode 12 02 (0=SINGLE
-1=ALL 2=ADD); sample trim/loop = sampletools 1E/1F items 20/21/26/30/31
-(QWORD frame offsets), audition = 1C 40/41. Full spec in session research.
-
 ## CLI
 
 ```bash

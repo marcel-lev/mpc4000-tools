@@ -147,6 +147,17 @@ final class Backend: ObservableObject {
                 }
                 continue
             }
+            if let event = obj["event"] as? String, event == "item" {
+                DispatchQueue.main.async {
+                    let name = obj["name"] as? String ?? ""
+                    let i = obj["index"] as? Int ?? 0
+                    let n = obj["count"] as? Int ?? 0
+                    self.busyText = "Backing up \(name) (\(i)/\(n))…"
+                    self.progressDone = 0
+                    self.progressTotal = nil
+                }
+                continue
+            }
             let completion = pendingCompletion
             pendingCompletion = nil
             if let c = completion {
@@ -448,9 +459,9 @@ final class Backend: ObservableObject {
     }
 
     func download(_ rows: [Row], to dir: URL) {
-        let files = rows.filter { !$0.entry.isFolder }
-        guard !files.isEmpty else { return }
-        downloadNext(files, index: 0, dir: dir)
+        let items = ramMode ? rows.filter { !$0.entry.isFolder } : rows
+        guard !items.isEmpty else { return }
+        downloadNext(items, index: 0, dir: dir)
     }
 
     private func downloadNext(_ files: [Row], index: Int, dir: URL) {
@@ -458,6 +469,15 @@ final class Backend: ObservableObject {
         let f = files[index]
         let req: [String: Any]
         let local: String
+        if f.entry.isFolder {
+            local = dir.appendingPathComponent(f.entry.name).path
+            req = ["op": "get_folder", "dir": fullRemoteDir(f.dir),
+                   "name": f.entry.name, "local": local]
+            send(req, label: "Backing up folder \(f.entry.name)…") { _ in
+                self.downloadNext(files, index: index + 1, dir: dir)
+            }
+            return
+        }
         if ramMode {
             local = dir.appendingPathComponent(
                 f.entry.name + (Backend.ramExt[f.dir] ?? "")).path
@@ -675,8 +695,8 @@ struct ContentView: View {
                 .disabled(!backend.connected || backend.busy || backend.ramMode)
             Button { chooseDownload() }
                 label: { Image(systemName: "square.and.arrow.down") }
-                .help("Download selected files")
-                .disabled(!backend.connected || backend.busy || selectedFiles.isEmpty)
+                .help("Download selected files / back up selected folders (recursive)")
+                .disabled(!backend.connected || backend.busy || downloadableSelection.isEmpty)
             Button { startRename() }
                 label: { Image(systemName: "pencil") }
                 .help("Rename")
@@ -797,8 +817,12 @@ struct ContentView: View {
                     renameText = items[0].entry.name
                 }
             }
-            if !items.filter({ !$0.entry.isFolder }).isEmpty {
-                Button("Download…") { chooseDownload(items) }
+            if backend.ramMode ? !items.filter({ !$0.entry.isFolder }).isEmpty
+                                : !items.isEmpty {
+                Button(items.contains(where: { $0.entry.isFolder })
+                       ? "Download / Back Up…" : "Download…") {
+                    chooseDownload(items)
+                }
             }
             if !items.isEmpty, !backend.ramMode {
                 Button("Delete…", role: .destructive) { deleteTargets = items }
@@ -973,6 +997,10 @@ struct ContentView: View {
         selectedEntries.filter { !$0.entry.isFolder }
     }
 
+    private var downloadableSelection: [Row] {
+        backend.ramMode ? selectedFiles : selectedEntries
+    }
+
     private func startRename() {
         guard let row = selectedEntries.first else { return }
         renameTarget = row
@@ -1011,7 +1039,9 @@ struct ContentView: View {
     }
 
     private func chooseDownload(_ items: [Row]? = nil) {
-        let files = (items ?? selectedEntries).filter { !$0.entry.isFolder }
+        let files = backend.ramMode
+            ? (items ?? selectedEntries).filter { !$0.entry.isFolder }
+            : (items ?? selectedEntries)
         guard !files.isEmpty else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
