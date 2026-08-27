@@ -19,7 +19,7 @@ own subfolder with the `.akp` + WAVs.
 Rebuild after changing `exs2akp.py` or the UI:
 
 ```bash
-~/exs2akp/app/build.sh
+~/mpc4000-tools/exs2akp/app/build.sh
 ```
 
 (The app bundles a copy of `exs2akp.py` in its Resources; rebuilding

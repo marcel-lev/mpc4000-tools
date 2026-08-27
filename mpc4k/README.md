@@ -31,7 +31,7 @@ reverse-engineered by the Aksy project). Works with the Z4/Z8 too.
   unit. RAM is read-only from the manager: no upload/rename/delete.
 
 The app bundles the Python backend and libusb, so it has no external
-dependencies. Rebuild after changes: `~/mpc4k/app/build.sh`.
+dependencies. Rebuild after changes: `~/mpc4000-tools/mpc4k/app/build.sh`.
 
 ## Program Editor app
 
@@ -64,17 +64,17 @@ command); typed replies; EDIT ALL = keygroup edit-mode 12 02 (0=SINGLE
 ## CLI
 
 ```bash
-python3 ~/mpc4k/mpc4k.py info                 # connection + disk list
-python3 ~/mpc4k/mpc4k.py ls "2 Drums/06 Snare"
-python3 ~/mpc4k/mpc4k.py put local.wav "2 Drums/06 Snare"
-python3 ~/mpc4k/mpc4k.py get "2 Drums/06 Snare/file.wav" ~/Desktop
-python3 ~/mpc4k/mpc4k.py mkdir NewFolder
-python3 ~/mpc4k/mpc4k.py mv old.wav new.wav   # also cross-folder move
-python3 ~/mpc4k/mpc4k.py rm file.wav          # or a folder (recursive!)
-python3 ~/mpc4k/mpc4k.py mem                  # list RAM contents
-python3 ~/mpc4k/mpc4k.py memget "Kik 90s 2 MPC60" ~/Desktop
-python3 ~/mpc4k/mpc4k.py memsave "7 Recordings" # save all RAM to a disk folder
-python3 ~/mpc4k/mpc4k.py serve                # JSON backend used by the app
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py info                 # connection + disk list
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py ls "2 Drums/06 Snare"
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py put local.wav "2 Drums/06 Snare"
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py get "2 Drums/06 Snare/file.wav" ~/Desktop
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py mkdir NewFolder
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py mv old.wav new.wav   # also cross-folder move
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py rm file.wav          # or a folder (recursive!)
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py mem                  # list RAM contents
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py memget "Kik 90s 2 MPC60" ~/Desktop
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py memsave "7 Recordings" # save all RAM to a disk folder
+python3 ~/mpc4000-tools/mpc4k/mpc4k.py serve                # JSON backend used by the app
 ```
 
 Remote paths use `/`; `--disk HANDLE` picks a disk (default: first
