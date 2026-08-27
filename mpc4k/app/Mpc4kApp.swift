@@ -473,7 +473,15 @@ final class Backend: ObservableObject {
             local = dir.appendingPathComponent(f.entry.name).path
             req = ["op": "get_folder", "dir": fullRemoteDir(f.dir),
                    "name": f.entry.name, "local": local]
-            send(req, label: "Backing up folder \(f.entry.name)…") { _ in
+            send(req, label: "Backing up folder \(f.entry.name)…") { obj in
+                if let r = obj["result"] as? [String: Any],
+                   let failedList = r["failed"] as? [String], !failedList.isEmpty {
+                    self.lastError = "Backup of \(f.entry.name) finished, but "
+                        + "\(failedList.count) file(s) failed: "
+                        + failedList.prefix(5).joined(separator: ", ")
+                        + (failedList.count > 5 ? ", …" : "")
+                        + " — run the backup again to retry (existing files are skipped)."
+                }
                 self.downloadNext(files, index: index + 1, dir: dir)
             }
             return

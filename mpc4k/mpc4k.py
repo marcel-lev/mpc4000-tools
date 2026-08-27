@@ -333,9 +333,11 @@ class Mpc4000:
 
     def download_folder(self, remote_path, local_root, progress=None,
                         item_cb=None, max_depth=10):
-        """Recursively download a remote folder into local_root (which is
-        created). Enumerates first so item_cb can report i-of-n, then
-        transfers file by file. All listing commands are paced."""
+        """Recursively download a remote folder into local_root. Resumable:
+        files that already exist locally with the matching size are skipped,
+        so re-running an interrupted backup only fills the gaps. Individual
+        file failures are retried once (with endpoint-stall recovery) and
+        collected instead of aborting the rest of the run."""
         plan = []  # (relative_dir, [(name, size), ...])
 
         def walk(rel, depth):
@@ -351,21 +353,49 @@ class Mpc4000:
 
         walk("", 0)
         total = sum(len(files) for _, files in plan)
-        done = 0
+        i = downloaded = skipped = 0
+        failed = []
         for rel, files in plan:
             ldir = os.path.join(local_root, *rel.split("\\")) if rel \
                 else local_root
             os.makedirs(ldir, exist_ok=True)
-            if files:
-                self.open_folder(remote_path + ("\\" + rel if rel else ""))
-            for name, _size in files:
-                done += 1
+            opened = False
+            for name, size in files:
+                i += 1
                 if item_cb:
-                    item_cb(name, done, total)
-                self.get_file(name, os.path.join(ldir, name), progress)
+                    item_cb(name, i, total)
+                lpath = os.path.join(ldir, name)
+                if size > 0 and os.path.isfile(lpath) \
+                        and os.path.getsize(lpath) == size:
+                    skipped += 1
+                    continue
+                if not opened:
+                    self.open_folder(remote_path +
+                                     ("\\" + rel if rel else ""))
+                    opened = True
+                ok = False
+                for attempt in (1, 2):
+                    try:
+                        self.get_file(name, lpath, progress)
+                        ok = True
+                        break
+                    except (MpcError, usbio.UsbError, TimeoutError):
+                        if attempt == 1:
+                            try:
+                                self.dev.clear_halt()
+                            except Exception:
+                                pass
+                            time.sleep(1.5)
+                if ok:
+                    downloaded += 1
+                else:
+                    failed.append((rel + "\\" + name) if rel else name)
+                    if os.path.isfile(lpath):
+                        os.unlink(lpath)  # never leave truncated files
                 time.sleep(0.5)  # cooldown: sustained transfer bursts can
                                  # hang the sampler firmware
-        return total
+        return {"files": total, "downloaded": downloaded,
+                "skipped": skipped, "failed": failed}
 
     def load_file(self, name, with_deps=True):
         """Load a file from the current disk folder into RAM. with_deps loads
@@ -909,9 +939,9 @@ class Engine:
                     emit({"event": "item", "name": name,
                           "index": i, "count": n})
 
-                count = m.download_folder(remote, req["local"], progress,
-                                          item_cb)
-                emit({"ok": True, "result": {"files": count}})
+                result = m.download_folder(remote, req["local"], progress,
+                                           item_cb)
+                emit({"ok": True, "result": result})
             elif op == "load_file":
                 m.open_folder(req.get("dir", ""))
                 m.load_file(req["name"], bool(req.get("deps", True)))
